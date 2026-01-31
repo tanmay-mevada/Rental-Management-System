@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client"; // Use your utility
+import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2, Building2, FileText, Phone, CheckCircle2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Onboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const role = searchParams.get("role") || "CUSTOMER";
+  const roleParam = searchParams.get("role") || "CUSTOMER";
+  const role = roleParam.toUpperCase();
+  
+  // Validate role
+  const validRoles = ['CUSTOMER', 'VENDOR', 'ADMIN'];
+  const isValidRole = validRoles.includes(role);
 
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
@@ -24,20 +31,29 @@ export default function Onboarding() {
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push("/login"); // Security check
+      if (!user) {
+        router.push("/login"); // Security check
+        return;
+      }
       setUser(user);
     };
     getUser();
-  }, []);
+  }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    if (!isValidRole) {
+      alert("Invalid role specified");
+      return;
+    }
+    
     setLoading(true);
 
     // 2. Validate Vendor Requirements
     if (role === "VENDOR" && (!formData.company_name || !formData.gstin)) {
-      alert("Vendors must provide Company Name and GSTIN");
+      toast.error("Vendors must provide Company Name and GSTIN");
       setLoading(false);
       return;
     }
@@ -48,7 +64,7 @@ export default function Onboarding() {
         id: user.id, // Links to the Google Auth User
         email: user.email,
         name: user.user_metadata.full_name || user.email?.split("@")[0], // Fallback name
-        role: role.toUpperCase(),
+        role: role,
         company_name: formData.company_name || null,
         gstin: formData.gstin || null,
         mobile: formData.mobile || null,
@@ -56,8 +72,9 @@ export default function Onboarding() {
     ]);
 
     if (error) {
-      alert("Error creating profile: " + error.message);
+      toast.error("Error creating profile: " + error.message);
     } else {
+      toast.success("Profile created successfully! Redirecting...");
       // Dynamic Redirect based on Role
       if (role === "VENDOR") {
         router.push("/vendor/dashboard");
@@ -83,39 +100,65 @@ export default function Onboarding() {
           {role === "VENDOR" && (
             <>
               <div>
-                <label className="block text-sm font-medium">Company Name</label>
-                <input
-                  required
-                  className="w-full p-2 border rounded mt-1"
-                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    required
+                    value={formData.company_name}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    placeholder="Company Name"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium">GSTIN</label>
-                <input
-                  required
-                  className="w-full p-2 border rounded mt-1"
-                  onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    required
+                    value={formData.gstin}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
+                    placeholder="GSTIN Number"
+                  />
+                </div>
               </div>
             </>
           )}
 
           {/* Common Field */}
           <div>
-            <label className="block text-sm font-medium">Mobile Number (Optional)</label>
-            <input
-              className="w-full p-2 border rounded mt-1"
-              onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number (Optional)</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="tel"
+                value={formData.mobile}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                placeholder="Mobile Number"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? "Saving..." : "Complete Setup"}
+            {loading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-5 w-5" />
+                Complete Setup
+              </>
+            )}
           </button>
         </form>
       </div>

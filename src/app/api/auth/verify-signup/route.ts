@@ -24,6 +24,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate role
+    const validRoles = ['CUSTOMER', 'VENDOR', 'ADMIN'];
+    const userRole = (role || 'CUSTOMER').toUpperCase();
+    if (!validRoles.includes(userRole)) {
+      return NextResponse.json({ error: 'Invalid role specified' }, { status: 400 });
+    }
+
+    // Validate vendor-specific fields
+    if (userRole === 'VENDOR' && (!company_name || !gstin)) {
+      return NextResponse.json({ error: 'Company Name and GSTIN are required for Vendors' }, { status: 400 });
+    }
+
+    // Check if user already exists in public.users table
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (existingUser) {
+      return NextResponse.json({ error: 'A user with this email already exists' }, { status: 409 });
+    }
+
     // 2. Verify OTP
     // Check if the OTP exists and matches the email
     const { data: verificationData, error: verifyError } = await supabaseAdmin
@@ -37,10 +60,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 400 });
     }
 
-    // Check expiration (optional, if you want strict 10-min windows)
-    const expiresAt = new Date(verificationData.expires_at);
-    if (new Date() > expiresAt) {
-      return NextResponse.json({ error: 'OTP has expired' }, { status: 400 });
+    // Check expiration (if expires_at exists)
+    if (verificationData.expires_at) {
+      const expiresAt = new Date(verificationData.expires_at);
+      if (new Date() > expiresAt) {
+        return NextResponse.json({ error: 'OTP has expired' }, { status: 400 });
+      }
     }
 
     // 3. Create Supabase Auth User
@@ -53,6 +78,10 @@ export async function POST(req: Request) {
     });
 
     if (authError) {
+      // Check if error is due to existing user
+      if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+        return NextResponse.json({ error: 'A user with this email already exists' }, { status: 409 });
+      }
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
@@ -71,7 +100,7 @@ export async function POST(req: Request) {
           id: userId, // Link to the Auth User ID
           email,
           name,
-          role: role || 'CUSTOMER',
+          role: userRole,
           company_name: company_name || null,
           gstin: gstin || null,
           mobile: mobile || null,

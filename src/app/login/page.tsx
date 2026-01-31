@@ -1,16 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Loader2, Mail, Lock, LogIn } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
+
+  useEffect(() => {
+    // Check for query params
+    const error = searchParams.get("error");
+    const reset = searchParams.get("reset");
+    
+    if (error === "auth_failed") {
+      toast.error("Authentication failed. Please try again.");
+    }
+    if (reset === "success") {
+      toast.success("Password reset successfully! Please login with your new password.");
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +53,8 @@ export default function LoginPage() {
       if (profileError) throw profileError;
 
       // 3. Conditional Redirect Logic
+      toast.success("Login successful! Redirecting...");
+      
       if (profile.role === "VENDOR") {
         router.push("/vendor/dashboard");
       } else if (profile.role === "ADMIN") {
@@ -45,21 +64,35 @@ export default function LoginPage() {
       }
 
     } catch (error: any) {
-      alert("Login failed: " + error.message);
+      console.error("Login error:", error);
+      toast.error(error.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    // Note: We don't pass a 'role' param here because we are LOGGING IN, 
-    // not signing up. The callback will look up their existing role.
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
+    setGoogleLoading(true);
+    try {
+      // Note: We don't pass a 'role' param here because we are LOGGING IN, 
+      // not signing up. The callback will look up their existing role.
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${origin}/auth/callback`,
+        },
+      });
+      
+      if (error) {
+        toast.error(error.message || "Failed to sign in with Google");
+        setGoogleLoading(false);
+      }
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      toast.error("Failed to sign in with Google");
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -70,33 +103,58 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email Address</label>
-            <input
-              type="email"
-              required
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="you@example.com"
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="email"
+                required
+                value={formData.email}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="you@example.com"
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              required
-              className="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              placeholder="••••••••"
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="password"
+                required
+                value={formData.password}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="••••••••"
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div></div>
+            <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              Forgot password?
+            </Link>
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200"
+            disabled={loading || googleLoading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                <LogIn className="h-5 w-5" />
+                Sign In
+              </>
+            )}
           </button>
         </form>
 
@@ -108,10 +166,17 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full border border-gray-300 py-3 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 transition duration-200"
+          disabled={loading || googleLoading}
+          className="w-full border border-gray-300 py-3 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-50 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5" alt="Google" />
-          <span className="font-medium text-gray-700">Google</span>
+          {googleLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
+          ) : (
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5" alt="Google" />
+          )}
+          <span className="font-medium text-gray-700">
+            {googleLoading ? "Connecting..." : "Continue with Google"}
+          </span>
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-6">

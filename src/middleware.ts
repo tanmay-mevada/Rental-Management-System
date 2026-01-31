@@ -61,7 +61,18 @@ export async function middleware(request: NextRequest) {
     const pathname = url.pathname
 
     // 2. Global Public Routes (Always accessible)
-    const publicRoutes = ['/login', '/signup', '/auth/callback', '/api/auth/verify-signup', '/api/auth/send-otp']
+    const publicRoutes = [
+      '/login', 
+      '/signup', 
+      '/auth/callback', 
+      '/forgot-password',
+      '/reset-password',
+      '/api/auth/verify-signup', 
+      '/api/auth/send-otp',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/auth/logout'
+    ]
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route)) || pathname === '/'
 
     // 3. Handle Unauthenticated Users
@@ -70,13 +81,10 @@ export async function middleware(request: NextRequest) {
         if (isPublicRoute) {
             return response
         }
-        // Redirect to login for protected routes
-        // Check specific protected paths or catch-all
-        if (pathname.startsWith('/dashboard') || pathname.startsWith('/vendor') || pathname.startsWith('/admin') || pathname.startsWith('/onboarding')) {
-            url.pathname = '/login'
-            return NextResponse.redirect(url)
-        }
-        return response
+        // Redirect to login for ALL other routes (everything else is protected)
+        url.pathname = '/login'
+        url.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(url)
     }
 
     // 4. Handle Authenticated Users

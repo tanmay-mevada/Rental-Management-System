@@ -8,16 +8,25 @@ const supabaseAdmin = createClient(
 );
 
 // 2. Configure Nodemailer Transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // Use 'gmail' or your SMTP host
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: process.env.EMAIL_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const transporter = nodemailer.createTransport(
+  process.env.EMAIL_HOST && process.env.EMAIL_PORT
+    ? {
+        host: process.env.EMAIL_HOST,
+        port: Number(process.env.EMAIL_PORT),
+        secure: process.env.EMAIL_SECURE === 'true',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      }
+    : {
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      }
+);
 
 export async function POST(req: Request) {
   try {
@@ -62,13 +71,17 @@ export async function POST(req: Request) {
       .delete()
       .eq('email', email);
 
+    // Calculate expiration time (10 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
     const { error: dbError } = await supabaseAdmin
       .from('verification_codes')
       .insert([
         {
           email,
           code: otp,
-          // Optional: Add metadata if needed
+          expires_at: expiresAt.toISOString(),
         }
       ]);
 

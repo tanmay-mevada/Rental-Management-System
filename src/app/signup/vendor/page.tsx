@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client"; 
 import { useRouter } from "next/navigation";
+import { Loader2, Mail, Lock, User, Building2, FileText, Send, CheckCircle2 } from "lucide-react";
+import toast from "react-hot-toast";
+import Link from "next/link";
 
 export default function VendorSignup() {
   const router = useRouter();
@@ -34,7 +37,7 @@ export default function VendorSignup() {
 
     // Simple validation
     if (!formData.company_name || !formData.gstin) {
-      alert("Company Name and GSTIN are required for Vendors.");
+      toast.error("Company Name and GSTIN are required for Vendors.");
       setLoading(false);
       return;
     }
@@ -42,12 +45,19 @@ export default function VendorSignup() {
     try {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email }),
       });
-      if (res.ok) setStep(2);
-      else alert("Failed to send OTP");
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("OTP sent to your email!");
+        setStep(2);
+      } else {
+        toast.error(data.error || "Failed to send OTP");
+      }
     } catch (error) {
       console.error(error);
+      toast.error("Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -77,10 +87,12 @@ const handleVerifyAndSignup = async () => {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.error);
+      toast.error(data.error || "Failed to create account");
       setLoading(false);
       return;
     }
+
+    toast.success("Account created successfully! Logging you in...");
 
     // Success! Log the user in automatically
     const { error: loginError } = await supabase.auth.signInWithPassword({
@@ -89,14 +101,16 @@ const handleVerifyAndSignup = async () => {
     });
 
     if (loginError) {
-      alert("Account created, but auto-login failed. Please sign in manually.");
+      toast.error("Account created, but auto-login failed. Please sign in manually.");
+      router.push("/login");
     } else {
-      router.push("/dashboard"); // Redirect to dashboard
+      toast.success("Welcome! Redirecting to dashboard...");
+      router.push("/vendor/dashboard"); // Redirect to vendor dashboard
     }
 
   } catch (error) {
     console.error(error);
-    alert("Something went wrong");
+    toast.error("Something went wrong. Please try again.");
   } finally {
     setLoading(false);
   }
@@ -106,13 +120,16 @@ const handleVerifyAndSignup = async () => {
   const handleGoogleLogin = async () => {
     // We pass the role in the 'redirectTo' URL so the callback knows 
     // to ask for Vendor details if they are new.
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${location.origin}/auth/callback?role=VENDOR`, // Change to CUSTOMER for customer page
+        redirectTo: `${origin}/auth/callback?role=VENDOR`,
       },
     });
-    if (error) alert(error.message);
+    if (error) {
+      toast.error(error.message || "Failed to sign in with Google");
+    }
   };
 
   return (
@@ -123,31 +140,97 @@ const handleVerifyAndSignup = async () => {
         {step === 1 ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium">Full Name</label>
-              <input name="name" required onChange={handleChange} className="w-full p-2 border rounded mt-1" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input 
+                  name="name" 
+                  required 
+                  value={formData.name}
+                  onChange={handleChange} 
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+                  placeholder="John Doe"
+                />
+              </div>
             </div>
             
             {/* Vendor Specific Fields  */}
             <div>
-              <label className="block text-sm font-medium">Company Name</label>
-              <input name="company_name" required onChange={handleChange} className="w-full p-2 border rounded mt-1" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input 
+                  name="company_name" 
+                  required 
+                  value={formData.company_name}
+                  onChange={handleChange} 
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+                  placeholder="Company Name"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium">GSTIN</label>
-              <input name="gstin" required onChange={handleChange} className="w-full p-2 border rounded mt-1" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">GSTIN</label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input 
+                  name="gstin" 
+                  required 
+                  value={formData.gstin}
+                  onChange={handleChange} 
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+                  placeholder="GSTIN Number"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Email</label>
-              <input type="email" name="email" required onChange={handleChange} className="w-full p-2 border rounded mt-1" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input 
+                  type="email" 
+                  name="email" 
+                  required 
+                  value={formData.email}
+                  onChange={handleChange} 
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+                  placeholder="you@example.com"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium">Password</label>
-              <input type="password" name="password" required onChange={handleChange} className="w-full p-2 border rounded mt-1" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input 
+                  type="password" 
+                  name="password" 
+                  required 
+                  value={formData.password}
+                  onChange={handleChange} 
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" 
+                  placeholder="••••••••"
+                />
+              </div>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-              {loading ? "Sending OTP..." : "Verify Email & Signup"}
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Sending OTP...
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" />
+                  Verify Email & Signup
+                </>
+              )}
             </button>
 
             <div className="relative my-4">
@@ -170,12 +253,38 @@ const handleVerifyAndSignup = async () => {
               onChange={(e) => setOtp(e.target.value)} 
               className="w-full p-2 border rounded text-center text-2xl tracking-widest"
             />
-            <button onClick={handleVerifyAndSignup} disabled={loading} className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">
-              {loading ? "Creating Account..." : "Confirm OTP"}
+            <button 
+              onClick={handleVerifyAndSignup} 
+              disabled={loading} 
+              className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-5 w-5" />
+                  Confirm OTP
+                </>
+              )}
             </button>
-            <button onClick={() => setStep(1)} className="w-full text-sm text-gray-500 underline">Wrong Email?</button>
+            <button 
+              onClick={() => setStep(1)} 
+              className="w-full text-sm text-gray-500 hover:text-gray-700 underline"
+            >
+              Wrong Email?
+            </button>
           </div>
         )}
+
+        <p className="text-center text-sm text-gray-600 mt-6">
+          Already have an account?{" "}
+          <Link href="/login" className="text-blue-600 hover:underline font-medium">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );
