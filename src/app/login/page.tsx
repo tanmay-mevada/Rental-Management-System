@@ -33,8 +33,26 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
+    // --- 1. CHECK FOR STATIC ADMIN CREDENTIALS ---
+    // This allows the specific admin email/password to bypass Supabase
+    if (formData.email === 'admin@gmail.com' && formData.password === 'admin123') {
+      // Simulate network delay for realism
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Set Admin Session Flag (Local Storage)
+      // This is used by the Admin Dashboard to verify access
+      localStorage.setItem('isAdminAuthenticated', 'true');
+      localStorage.setItem('adminName', 'Super Admin');
+      
+      toast.success('Welcome back, Admin!');
+      router.push('/admin/dashboard'); 
+      setLoading(false);
+      return; // Stop execution here
+    }
+
+    // --- 2. REGULAR USER LOGIN (SUPABASE) ---
     try {
-      // 1. Authenticate with Supabase Auth
+      // Authenticate with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -42,8 +60,7 @@ export default function LoginPage() {
 
       if (authError) throw authError;
 
-      // 2. Fetch User Role from 'public.users'
-      // We need this to know WHERE to send them
+      // Fetch User Role from 'public.users' to know WHERE to send them
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("role")
@@ -52,8 +69,8 @@ export default function LoginPage() {
 
       if (profileError) throw profileError;
 
-      // 3. Conditional Redirect Logic
-      toast.success("Login successful! Redirecting...");
+      // Conditional Redirect Logic
+      toast.success("Login successful!");
       
       if (profile.role === "VENDOR") {
         router.push("/vendor/dashboard");
@@ -74,8 +91,6 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      // Note: We don't pass a 'role' param here because we are LOGGING IN, 
-      // not signing up. The callback will look up their existing role.
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -110,7 +125,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 value={formData.email}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-black"
                 placeholder="you@example.com"
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
