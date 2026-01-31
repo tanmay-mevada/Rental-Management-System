@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Star, Calendar, Info, CheckCircle, X, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client'; // Import Supabase
+import { createClient } from '@/utils/supabase/client';
 import toast from 'react-hot-toast';
 
-// ... (Keep your existing PRODUCT_DETAILS constant and imports) ...
+// --- Mock Data (Replace with DB fetch if needed later) ---
 const PRODUCT_DETAILS = {
   id: '1',
   name: 'High-Performance Gaming PC',
@@ -32,28 +32,22 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const supabase = createClient();
   
-  // State
+  // UI State
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [loading, setLoading] = useState(false);
   
-  // Configuration State
+  // Selection State
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
-  const [selectedSpecs, setSelectedSpecs] = useState<Record<string, string>>({
-    'RAM': PRODUCT_DETAILS.attributes[0].options[0],
-    'Storage': PRODUCT_DETAILS.attributes[1].options[0]
-  });
-  
-  // Rental Dates
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   const currentVariant = PRODUCT_DETAILS.variants[selectedVariantIdx];
 
-  // --- ADD TO CART (DB) LOGIC ---
+  // --- ADD TO CART LOGIC ---
   const handleAddToCart = async () => {
     if (!startDate || !endDate) {
-      toast.error("Please select rental dates");
+      toast.error("Please select rental dates first");
       return;
     }
     setLoading(true);
@@ -66,7 +60,7 @@ export default function ProductDetailPage() {
         return;
       }
 
-      // 1. Check if a DRAFT order exists
+      // 1. Check if a DRAFT order (Cart) exists
       let { data: order } = await supabase
         .from('rental_orders')
         .select('id')
@@ -76,7 +70,7 @@ export default function ProductDetailPage() {
 
       let orderId = order?.id;
 
-      // 2. If no draft, create one
+      // 2. If no cart exists, create one
       if (!orderId) {
         const { data: newOrder, error: orderError } = await supabase
           .from('rental_orders')
@@ -95,7 +89,7 @@ export default function ProductDetailPage() {
         orderId = newOrder.id;
       }
 
-      // 3. Add Item to 'rental_order_items'
+      // 3. Add Item to Cart (rental_order_items)
       const { error: itemError } = await supabase
         .from('rental_order_items')
         .insert({
@@ -109,7 +103,7 @@ export default function ProductDetailPage() {
 
       if (itemError) throw itemError;
 
-      toast.success("Added to Quote!");
+      toast.success("Added to Cart!"); // Updated Text
       router.push('/cart');
 
     } catch (error: any) {
@@ -135,15 +129,26 @@ export default function ProductDetailPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12 flex flex-col lg:flex-row gap-12">
-        {/* Images Section (Same as before) */}
+        
+        {/* Left: Images */}
         <div className="flex-1 space-y-4">
-           {/* ... Image gallery code ... */}
-           <div className="bg-[#1E1E1E] rounded-2xl border border-gray-800 p-8 h-[500px] flex items-center justify-center relative overflow-hidden">
+          <div className="bg-[#1E1E1E] rounded-2xl border border-gray-800 p-8 h-[500px] flex items-center justify-center relative overflow-hidden">
             <img src={PRODUCT_DETAILS.images[activeImage]} className="max-h-full object-contain" />
+          </div>
+          <div className="flex gap-4">
+            {PRODUCT_DETAILS.images.map((img, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => setActiveImage(idx)}
+                className={`w-24 h-24 bg-[#1E1E1E] rounded-xl border cursor-pointer overflow-hidden ${activeImage === idx ? 'border-purple-500' : 'border-gray-700'}`}
+              >
+                <img src={img} className="w-full h-full object-cover" />
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Details Section */}
+        {/* Right: Details */}
         <div className="flex-1 space-y-8">
           <div>
             <h1 className="text-4xl font-bold mb-2">{PRODUCT_DETAILS.name}</h1>
@@ -177,17 +182,62 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex gap-4 pt-4">
+            <button 
+              onClick={() => setIsConfigOpen(true)}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-bold py-4 rounded-xl border border-gray-600 flex items-center justify-center transition-all"
+            >
+              <Info className="h-5 w-5 mr-2" /> Configure
+            </button>
+
             <button 
               onClick={handleAddToCart}
               disabled={loading}
               className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center disabled:opacity-50"
             >
-              {loading ? "Adding..." : "Add to Quote"}
+              {loading ? "Adding..." : "Add to Cart"}
             </button>
           </div>
         </div>
       </main>
+
+      {/* Configuration Modal (Same as before) */}
+      {isConfigOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1E1E1E] w-full max-w-lg rounded-2xl border border-gray-700 shadow-2xl relative">
+            <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Configure Product</h2>
+              <button onClick={() => setIsConfigOpen(false)}><X className="h-6 w-6 text-gray-400" /></button>
+            </div>
+            <div className="p-8 space-y-8">
+              <div>
+                <label className="block text-sm font-bold text-gray-400 mb-3 uppercase">Color</label>
+                <div className="flex space-x-4">
+                  {PRODUCT_DETAILS.variants.map((v, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => setSelectedVariantIdx(idx)}
+                      className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${selectedVariantIdx === idx ? 'border-white ring-2 ring-purple-500' : 'border-transparent'}`}
+                      style={{ backgroundColor: v.color }}
+                    >
+                      {selectedVariantIdx === idx && <CheckCircle className="text-white drop-shadow-md" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-800 flex justify-end">
+              <button 
+                onClick={() => { setIsConfigOpen(false); toast.success("Configuration Saved"); }}
+                className="px-8 py-3 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-lg"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
