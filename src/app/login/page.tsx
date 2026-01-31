@@ -6,196 +6,189 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Mail, Lock, LogIn } from "lucide-react";
 import toast from "react-hot-toast";
+import { StaticNavbar } from "@/components/StaticNavbar";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const supabase = createClient();
-  
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [formData, setFormData] = useState({ email: "", password: "" });
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const supabase = createClient();
 
-  useEffect(() => {
-    const error = searchParams.get("error");
-    const reset = searchParams.get("reset");
-    
-    if (error === "auth_failed") {
-      toast.error("Authentication failed. Please try again.");
-    }
-    if (reset === "success") {
-      toast.success("Password reset successfully! Please login with your new password.");
-    }
-  }, [searchParams]);
+    const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const [formData, setFormData] = useState({ email: "", password: "" });
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    useEffect(() => {
+        const error = searchParams.get("error");
+        const reset = searchParams.get("reset");
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
+        if (error === "auth_failed") {
+            toast.error("Authentication failed. Please try again.");
+        }
+        if (reset === "success") {
+            toast.success("Password reset successfully! Please login with your new password.");
+        }
+    }, [searchParams]);
 
-      if (authError) throw authError;
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
 
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", authData.user.id)
-        .single();
+        try {
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: formData.email,
+                password: formData.password,
+            });
 
-      if (profileError) throw profileError;
+            if (authError) throw authError;
 
-      toast.success("Login successful! Redirecting...");
-      
-      if (profile.role === "VENDOR") {
-        router.push("/vendor/dashboard");
-      } else if (profile.role === "ADMIN") {
-        router.push("/admin/dashboard");
-      } else {
-        router.push("/dashboard");
-      }
+            // Fetch the role from the public.users table
+            const { data: profile, error: profileError } = await supabase
+                .from("users")
+                .select("role")
+                .eq("id", authData.user.id)
+                .single();
 
-    } catch (error: any) {
-      console.error("Login error:", error);
-      toast.error(error.message || "Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
+            if (profileError) throw profileError;
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : '';
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${origin}/auth/callback`,
-        },
-      });
-      
-      if (error) {
-        toast.error(error.message || "Failed to sign in with Google");
-        setGoogleLoading(false);
-      }
-    } catch (error: any) {
-      console.error("Google login error:", error);
-      toast.error("Failed to sign in with Google");
-      setGoogleLoading(false);
-    }
-  };
+            toast.success("Login successful! Redirecting...");
 
-  return (
-    // 1. Page Background
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 transition-colors duration-300">
-      
-      {/* 2. Card Container */}
-      <div className="max-w-md w-full bg-card border border-border rounded-xl shadow-xl p-8 transition-colors duration-300">
-        
-        {/* Header */}
-        <h2 className="text-3xl font-bold text-center mb-2 text-foreground">Welcome Back</h2>
-        <p className="text-center text-foreground/60 mb-8">Sign in to your account</p>
+            // Role-based redirection
+            if (profile.role === "VENDOR") {
+                router.push("/vendor/dashboard");
+            } else if (profile.role === "ADMIN") {
+                router.push("/admin/dashboard");
+            } else {
+                router.push("/dashboard");
+            }
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          {/* Email Field */}
-          <div>
-            <label className="block text-sm font-medium text-foreground/80 mb-1">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-foreground/40" />
-              <input
-                type="email"
-                required
-                value={formData.email}
-                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all"
-                placeholder="you@example.com"
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-          </div>
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Login failed. Please check your credentials.";
+            console.error("Login error:", error);
+            toast.error(message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-          {/* Password Field */}
-          <div>
-            <label className="block text-sm font-medium text-foreground/80 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-foreground/40" />
-              <input
-                type="password"
-                required
-                value={formData.password}
-                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all"
-                placeholder="••••••••"
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
-            </div>
-          </div>
+    const handleGoogleLogin = async () => {
+        setGoogleLoading(true);
+        try {
+            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: `${origin}/auth/callback`,
+                },
+            });
 
-          {/* Forgot Password Link */}
-          <div className="flex items-center justify-between">
-            <div></div>
-            <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 font-medium hover:underline transition-colors">
-              Forgot password?
-            </Link>
-          </div>
+            if (error) throw error;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Failed to sign in with Google";
+            console.error("Google login error:", error);
+            toast.error(message);
+            setGoogleLoading(false);
+        }
+    };
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading || googleLoading}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-bold hover:opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                <LogIn className="h-5 w-5" />
-                Sign In
-              </>
-            )}
-          </button>
-        </form>
+    return (
+        // flex-col stacks the Navbar and the Main content area
+        <div className="min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-primary/30">
+            <StaticNavbar />
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            {/* Note: 'bg-card' here ensures the line doesn't cut through the text background */}
-            <span className="px-2 bg-card text-foreground/50">Or continue with</span>
-          </div>
+            {/* main fills the remaining space and centers the card */}
+            <main className="flex-1 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-card border border-border rounded-2xl shadow-2xl p-8 relative overflow-hidden transition-all duration-300">
+                    
+                    {/* Decorative Ambient Glow */}
+                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+                    <div className="text-center mb-8 relative z-10">
+                        <h2 className="text-3xl font-bold tracking-tight text-foreground">Welcome Back</h2>
+                        <p className="text-muted-foreground text-sm mt-2">Sign in to your account</p>
+                    </div>
+
+                    <form onSubmit={handleLogin} className="space-y-5 relative z-10">
+                        {/* Email Field */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1 tracking-widest">Email Address</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                                <input
+                                    type="email"
+                                    required
+                                    value={formData.email}
+                                    className="w-full pl-11 pr-4 py-3 bg-secondary/30 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    placeholder="you@example.com"
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Password Field */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Password</label>
+                                <Link href="/forgot-password" weights="medium" className="text-xs text-primary hover:underline">
+                                    Forgot?
+                                </Link>
+                            </div>
+                            <div className="relative group">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                                <input
+                                    type="password"
+                                    required
+                                    value={formData.password}
+                                    className="w-full pl-11 pr-4 py-3 bg-secondary/30 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    placeholder="••••••••"
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Submit Button */}
+                        <button
+                            type="submit"
+                            disabled={loading || googleLoading}
+                            className="w-full bg-primary text-primary-foreground py-4 rounded-xl font-bold hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                        >
+                            {loading ? (
+                                <><Loader2 className="h-5 w-5 animate-spin" /> Signing in...</>
+                            ) : (
+                                <><LogIn className="h-5 w-5" /> Sign In</>
+                            )}
+                        </button>
+                    </form>
+
+                    {/* Divider */}
+                    <div className="relative my-8">
+                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div>
+                        <div className="relative flex justify-center text-xs uppercase"><span className="px-3 bg-card text-muted-foreground font-semibold">Or continue with</span></div>
+                    </div>
+
+                    {/* Google Button */}
+                    <button
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        disabled={loading || googleLoading}
+                        className="w-full border border-border py-3 rounded-xl flex items-center justify-center gap-3 hover:bg-secondary/50 transition-all font-medium text-sm disabled:opacity-50"
+                    >
+                        {googleLoading ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        ) : (
+                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5" alt="Google" />
+                        )}
+                        {googleLoading ? "Connecting..." : "Continue with Google"}
+                    </button>
+
+                    {/* Sign Up Link */}
+                    <p className="text-center text-sm text-muted-foreground mt-8 relative z-10">
+                        Dont have an account?{" "}
+                        <Link href="/signup/customer" className="text-primary hover:underline font-bold transition-colors">
+                            Sign up
+                        </Link>
+                    </p>
+                </div>
+            </main>
         </div>
-
-        {/* Google Button */}
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          disabled={loading || googleLoading}
-          className="w-full bg-card border border-border py-3 rounded-lg flex items-center justify-center gap-3 hover:bg-accent hover:text-accent-foreground transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {googleLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin text-foreground/60" />
-          ) : (
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="h-5 w-5" alt="Google" />
-          )}
-          <span className="font-medium text-foreground/80">
-            {googleLoading ? "Connecting..." : "Continue with Google"}
-          </span>
-        </button>
-
-        {/* Sign Up Link */}
-        <p className="text-center text-sm text-foreground/60 mt-6">
-          Dont have an account?{" "}
-          <Link href="/signup/customer" className="text-primary hover:text-primary/80 font-bold hover:underline transition-colors">
-            Sign up
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
+    );
 }

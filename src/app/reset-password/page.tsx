@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Loader2, 
-  CheckCircle2, 
-  ShieldCheck, 
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle2,
+  ShieldCheck,
   KeyRound,
   ArrowLeft,
   Moon,
@@ -16,13 +16,14 @@ import {
 } from 'lucide-react';
 import toast from "react-hot-toast";
 import { createClient } from "@/utils/supabase/client";
-import { useTheme } from "next-themes"; // <--- Import this
+import { useTheme } from "next-themes";
+import { StaticNavbar } from "@/components/StaticNavbar";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const supabase = createClient();
   const { setTheme, resolvedTheme } = useTheme(); // <--- Hook for theme
-  
+
   // State
   const [loading, setLoading] = useState(false);
   const [password, setPassword] = useState("");
@@ -39,7 +40,7 @@ export default function ResetPasswordPage() {
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (!session) {
           toast.error("Invalid or expired reset link.");
           router.push("/forgot-password");
@@ -92,13 +93,17 @@ export default function ResetPasswordPage() {
       if (error) throw error;
 
       toast.success("Password updated successfully!");
-      
+
       await supabase.auth.signOut();
       setTimeout(() => {
         router.push("/login?reset=success");
       }, 1500);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update password.");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unexpected error occurred");
+      }
     } finally {
       setLoading(false);
     }
@@ -120,7 +125,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans transition-colors duration-300 flex items-center justify-center p-4 relative">
-      
+      <StaticNavbar/>
       {/* ================= THEME TOGGLE (Floating Top Right) ================= */}
       <button
         onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
@@ -142,7 +147,7 @@ export default function ResetPasswordPage() {
       {/* ================= MAIN CARD ================= */}
       <div className="max-w-md w-full relative z-10 animate-in fade-in zoom-in-95 duration-500">
         <div className="bg-card border border-border shadow-2xl rounded-3xl p-8 md:p-10 backdrop-blur-xl">
-          
+
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary/20 shadow-inner">
@@ -153,7 +158,7 @@ export default function ResetPasswordPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {/* Password Input */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold opacity-40 uppercase tracking-widest ml-1">
@@ -177,14 +182,14 @@ export default function ResetPasswordPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              
+
               {/* Requirements Badges */}
               <div className="flex flex-wrap gap-2 mt-2">
-                 {['8+ Chars', 'A-Z', '0-9'].map((req) => (
-                   <span key={req} className="inline-flex items-center px-2 py-1 rounded bg-accent/50 border border-border text-[9px] font-bold opacity-60 tracking-wide">
-                     <CheckCircle2 className="w-2.5 h-2.5 mr-1 opacity-50" /> {req}
-                   </span>
-                 ))}
+                {['8+ Chars', 'A-Z', '0-9'].map((req) => (
+                  <span key={req} className="inline-flex items-center px-2 py-1 rounded bg-accent/50 border border-border text-[9px] font-bold opacity-60 tracking-wide">
+                    <CheckCircle2 className="w-2.5 h-2.5 mr-1 opacity-50" /> {req}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -235,8 +240,8 @@ export default function ResetPasswordPage() {
 
           {/* Footer Link */}
           <div className="mt-8 pt-6 border-t border-border text-center">
-            <button 
-              onClick={() => router.push('/login')} 
+            <button
+              onClick={() => router.push('/login')}
               className="group flex items-center justify-center gap-2 text-sm text-primary font-bold hover:opacity-80 transition-all mx-auto"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />

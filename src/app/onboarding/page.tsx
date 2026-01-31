@@ -5,34 +5,46 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Building2, FileText, Phone, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { User } from "@supabase/supabase-js";
+
+// 1. Define the User Role type
+type UserRole = 'CUSTOMER' | 'VENDOR' | 'ADMIN';
+
+// 2. Define the Form State interface
+interface OnboardingFormData {
+  company_name: string;
+  gstin: string;
+  mobile: string;
+}
 
 export default function Onboarding() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roleParam = searchParams.get("role") || "CUSTOMER";
-  const role = roleParam.toUpperCase();
   
-  // Validate role
-  const validRoles = ['CUSTOMER', 'VENDOR', 'ADMIN'];
+  // Normalize role and validate
+  const roleParam = searchParams.get("role")?.toUpperCase() || "CUSTOMER";
+  const role = roleParam as UserRole;
+  
+  const validRoles: UserRole[] = ['CUSTOMER', 'VENDOR', 'ADMIN'];
   const isValidRole = validRoles.includes(role);
 
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  
+  // 3. Use the Supabase User type instead of any
+  const [user, setUser] = useState<User | null>(null);
 
-  // Form State
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<OnboardingFormData>({
     company_name: "",
     gstin: "",
     mobile: "",
   });
 
-  // 1. Load User on Mount
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login"); // Security check
+        router.push("/login");
         return;
       }
       setUser(user);
@@ -40,33 +52,32 @@ export default function Onboarding() {
     getUser();
   }, [router, supabase]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user) return;
     
     if (!isValidRole) {
-      alert("Invalid role specified");
+      toast.error("Invalid role specified");
       return;
     }
     
     setLoading(true);
 
-    // 2. Validate Vendor Requirements
     if (role === "VENDOR" && (!formData.company_name || !formData.gstin)) {
       toast.error("Vendors must provide Company Name and GSTIN");
       setLoading(false);
       return;
     }
 
-    // 3. Create Profile in 'public.users'
+    // 4. Insert typed data into 'public.users'
     const { error } = await supabase.from("users").insert([
       {
-        id: user.id, // Links to the Google Auth User
+        id: user.id,
         email: user.email,
-        name: user.user_metadata.full_name || user.email?.split("@")[0], // Fallback name
+        name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
         role: role,
-        company_name: formData.company_name || null,
-        gstin: formData.gstin || null,
+        company_name: role === "VENDOR" ? formData.company_name : null,
+        gstin: role === "VENDOR" ? formData.gstin : null,
         mobile: formData.mobile || null,
       },
     ]);
@@ -75,33 +86,28 @@ export default function Onboarding() {
       toast.error("Error creating profile: " + error.message);
     } else {
       toast.success("Profile created successfully! Redirecting...");
-      // Dynamic Redirect based on Role
-      if (role === "VENDOR") {
-        router.push("/vendor/dashboard");
-      } else if (role === "ADMIN") {
-        router.push("/admin/dashboard");
-      } else {
-        router.push("/dashboard");
-      }
+      
+      const routes: Record<UserRole, string> = {
+        VENDOR: "/vendor/dashboard",
+        ADMIN: "/admin/dashboard",
+        CUSTOMER: "/dashboard"
+      };
+      
+      router.push(routes[role]);
     }
     setLoading(false);
   };
 
   return (
-    // Page Container
     <div className="min-h-screen flex items-center justify-center bg-background p-4 transition-colors duration-300">
-      
-      {/* Card Container */}
       <div className="max-w-md w-full bg-card border border-border rounded-xl shadow-xl p-8 transition-colors duration-300">
         
-        {/* Header */}
         <h2 className="text-2xl font-bold text-center mb-2 text-foreground">Complete Your Profile</h2>
         <p className="text-center text-foreground/60 mb-6">
           You are signing up as a <span className="font-bold text-primary">{role}</span>
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Vendor Specific Fields */}
           {role === "VENDOR" && (
             <>
               <div>
@@ -111,7 +117,7 @@ export default function Onboarding() {
                   <input
                     required
                     value={formData.company_name}
-                    className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                     onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                     placeholder="Company Name"
                   />
@@ -124,7 +130,7 @@ export default function Onboarding() {
                   <input
                     required
                     value={formData.gstin}
-                    className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                     onChange={(e) => setFormData({ ...formData, gstin: e.target.value })}
                     placeholder="GSTIN Number"
                   />
@@ -133,7 +139,6 @@ export default function Onboarding() {
             </>
           )}
 
-          {/* Common Field */}
           <div>
             <label className="block text-sm font-medium text-foreground/80 mb-1">Mobile Number (Optional)</label>
             <div className="relative">
@@ -141,29 +146,22 @@ export default function Onboarding() {
               <input
                 type="tel"
                 value={formData.mobile}
-                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-foreground/30 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
                 onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
                 placeholder="Mobile Number"
               />
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-bold hover:opacity-90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-bold hover:opacity-90 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
           >
             {loading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Saving...
-              </>
+              <><Loader2 className="h-5 w-5 animate-spin" /> Saving...</>
             ) : (
-              <>
-                <CheckCircle2 className="h-5 w-5" />
-                Complete Setup
-              </>
+              <><CheckCircle2 className="h-5 w-5" /> Complete Setup</>
             )}
           </button>
         </form>
