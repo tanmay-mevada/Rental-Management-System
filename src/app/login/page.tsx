@@ -17,7 +17,6 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
 
   useEffect(() => {
-    // Check for query params
     const error = searchParams.get("error");
     const reset = searchParams.get("reset");
     
@@ -34,7 +33,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 1. Authenticate with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -42,8 +40,6 @@ export default function LoginPage() {
 
       if (authError) throw authError;
 
-      // 2. Fetch User Role from 'public.users'
-      // We need this to know WHERE to send them
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("role")

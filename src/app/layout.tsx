@@ -3,12 +3,13 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/providers/ToastProvider";
+import { DynamicNavbar } from "@/components/DynamicNavbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "RentFlow - Rental Management System",
-  description: "Rent products online, manage inventory, and track returns.",
+  description: "Manage rentals, inventory, and automated invoicing.",
 };
 
 export default function RootLayout({
@@ -25,7 +26,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ToastProvider />
+          {/* Ensure ToastProvider is inside ThemeProvider for themed toasts */}
+          <ToastProvider /> 
+          <DynamicNavbar />
           {children}
         </ThemeProvider>
       </body>
