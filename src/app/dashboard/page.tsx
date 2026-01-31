@@ -474,7 +474,7 @@ export default function CustomerDashboard() {
                 }}
                 className="mt-6 text-purple-400 hover:underline"
               >
-                Clear all filters
+                Clear all filter
               </button>
             </div>
           )}
