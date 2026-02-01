@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📦 RentFlow - Rental Management System
 
-## Getting Started
+**RentFlow** is a comprehensive, full-stack rental management platform built with **Next.js 15**, **TypeScript**, and **Supabase**. It facilitates a seamless workflow between Customers, Vendors, and Administrators for renting equipment (electronics, furniture, cameras, etc.).
 
-First, run the development server:
+## 🚀 Features
+
+### 👑 Admin Dashboard
+- **Kanban Board:** Visual drag-and-drop style tracking of rental orders (Draft → Quotation → Sale Order → Confirmed → Invoiced).
+- **Order Management:** Create and edit rental orders with dynamic pricing, tax calculations, and status updates.
+- **Invoice Generation:** Auto-generate invoices from confirmed orders.
+- **User Management:** View customers and vendors.
+
+### 🏪 Vendor Portal
+- **Product Management:** Add, edit, and manage rental inventory.
+- **Duplicate Prevention:** Smart handling of SKUs to prevent duplicate entries.
+- **Image Upload:** Seamless product image uploads using Supabase Storage.
+
+### 🛒 Customer Experience
+- **Browse & Rent:** View available products from multiple vendors.
+- **Dynamic Cart:** Real-time calculation of rental costs based on duration (Start Date → End Date).
+- **Authentication:** Secure login via Email/Password or Google OAuth.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js 15 (App Router)](https://nextjs.org/)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Database & Auth:** [Supabase](https://supabase.com/) (PostgreSQL)
+- **Icons:** [Lucide React](https://lucide.dev/)
+- **Notifications:** [React Hot Toast](https://react-hot-toast.com/)
+
+---
+
+## ⚙️ Getting Started
+
+Follow these steps to set up the project locally.
+
+### 1. Clone the Repository
 
 ```bash
+git clone [https://github.com/your-username/rentflow.git](https://github.com/your-username/rentflow.git)
+cd rentflow
+2. Install Dependencies
+Bash
+npm install
+# or
+yarn install
+3. Configure Environment Variables
+Create a .env.local file in the root directory and add your Supabase credentials:
+
+Code snippet
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+4. Database Setup (Supabase)
+Go to your Supabase SQL Editor and run the following scripts to set up the tables and security policies:
+
+A. Create Tables
+SQL
+-- Users & Roles
+ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS role text DEFAULT 'CUSTOMER';
+
+-- Products
+create table products (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  description text,
+  sku text unique,
+  price numeric,
+  stock int,
+  category text,
+  image_url text,
+  vendor_id uuid references auth.users(id),
+  created_at timestamp with time zone default now()
+);
+
+-- Orders
+create table rental_orders (
+  id uuid default gen_random_uuid() primary key,
+  customer_id uuid references auth.users(id),
+  status text default 'Draft',
+  total_amount numeric,
+  rental_start date,
+  rental_end date,
+  created_at timestamp with time zone default now()
+);
+
+-- Order Items
+create table rental_order_items (
+  id uuid default gen_random_uuid() primary key,
+  order_id uuid references rental_orders(id) on delete cascade,
+  product_name text,
+  quantity int,
+  price numeric
+);
+B. Storage Bucket (For Images)
+SQL
+insert into storage.buckets (id, name, public) values ('products', 'products', true);
+
+create policy "Public Access" on storage.objects for all using ( bucket_id = 'products' );
+C. Disable RLS (For Development)
+Note: For production, you should write specific RLS policies.
+
+SQL
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE rental_orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE rental_order_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE auth.users DISABLE ROW LEVEL SECURITY;
+5. Run the Application
+Bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Open http://localhost:3000 with your browser to see the result.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+📂 Project Structure
+Bash
+src/
+├── app/
+│   ├── admin/          # Admin Dashboard (Orders, Invoices)
+│   ├── dashboard/      # Customer Dashboard (Cart, Profile)
+│   ├── vendor/         # Vendor Dashboard (Products)
+│   ├── login/          # Auth Pages
+│   └── page.tsx        # Landing Page
+├── components/
+│   ├── admin/          # Admin specific components (DocumentForm, Kanban)
+│   ├── vendor/         # Vendor components (ProductForm)
+│   └── ui/             # Reusable UI components
+└── utils/
+    └── supabase/       # Supabase client configuration
+🤝 Contributing
+Contributions are welcome! Please fork the repository and submit a pull request for any features or bug fixes.
