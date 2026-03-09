@@ -1,10 +1,10 @@
-# 📦 RentFlow - Rental Management System
+# RentFlow - Rental Management System
 
 **RentFlow** is a comprehensive, full-stack rental management platform built with **Next.js 15**, **TypeScript**, and **Supabase**. It facilitates a seamless workflow between Customers, Vendors, and Administrators for renting equipment (electronics, furniture, cameras, etc.).
 
-## 🚀 Features
+## Features
 
-### 👑 Admin Dashboard
+### Admin Dashboard
 - **Kanban Board:** Visual drag-and-drop style tracking of rental orders (Draft → Quotation → Sale Order → Confirmed → Invoiced).
 - **Order Management:** Create and edit rental orders with dynamic pricing, tax calculations, and status updates.
 - **Invoice Generation:** Auto-generate invoices from confirmed orders.
