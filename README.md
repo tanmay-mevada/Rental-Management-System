@@ -10,19 +10,19 @@
 - **Invoice Generation:** Auto-generate invoices from confirmed orders.
 - **User Management:** View customers and vendors.
 
-### 🏪 Vendor Portal
+### Vendor Portal
 - **Product Management:** Add, edit, and manage rental inventory.
 - **Duplicate Prevention:** Smart handling of SKUs to prevent duplicate entries.
 - **Image Upload:** Seamless product image uploads using Supabase Storage.
 
-### 🛒 Customer Experience
+### Customer Experience
 - **Browse & Rent:** View available products from multiple vendors.
 - **Dynamic Cart:** Real-time calculation of rental costs based on duration (Start Date → End Date).
 - **Authentication:** Secure login via Email/Password or Google OAuth.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework:** [Next.js 15 (App Router)](https://nextjs.org/)
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
@@ -33,7 +33,7 @@
 
 ---
 
-## ⚙️ Getting Started
+## Getting Started
 
 Follow these steps to set up the project locally.
 
@@ -112,7 +112,7 @@ Bash
 npm run dev
 Open http://localhost:3000 with your browser to see the result.
 
-📂 Project Structure
+Project Structure
 Bash
 src/
 ├── app/
@@ -127,5 +127,3 @@ src/
 │   └── ui/             # Reusable UI components
 └── utils/
     └── supabase/       # Supabase client configuration
-🤝 Contributing
-Contributions are welcome! Please fork the repository and submit a pull request for any features or bug fixes.
